@@ -25,11 +25,6 @@ body {
   font-weight: 800;
   letter-spacing: 10px;
   margin-bottom: 20px;
-  color: #e0e0e0;
-  text-shadow: 0 0 12px rgba(122, 162, 247, 0.5);
-}
-
-.game-title-accent {
   color: #7aa2f7;
   text-shadow: 0 0 18px rgba(122, 162, 247, 0.9);
 }
