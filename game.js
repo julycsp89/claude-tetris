@@ -111,6 +111,7 @@ function clearLines() {
       r++;
     }
   }
+  recordsTrackCombo(cleared); // ---- records ----
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
@@ -332,6 +333,7 @@ function endGame() {
   overlay.classList.remove('is-pause');
   overlayTitle.textContent = 'GAME OVER';  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  recordsOnGameOver(); // ---- records ----
 }
 
 function togglePause() {
@@ -378,6 +380,7 @@ function init() {
   overlay.classList.remove('is-pause');
   paused = false;
   gameOver = false;
+  recordsResetRun(); // ---- records ----
   dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
@@ -519,4 +522,184 @@ try { savedSkin = localStorage.getItem('skin') || 'retro'; } catch (e) {}
 applySkin(savedSkin);
 // ---- /skins ----
 
+// ---- records ----
+const RECORDS_KEY = 'tetris-records';
+const RECORDS_MAX = 5;
+const recordsPanel = document.getElementById('records-panel');
+const recordsForm = document.getElementById('records-form');
+const recordsName = document.getElementById('records-name');
+const recordsSave = document.getElementById('records-save');
+const recordsBody = document.getElementById('records-body');
+const recordsBestCombo = document.getElementById('records-best-combo');
+const recordsMaxLines = document.getElementById('records-max-lines');
+const recordsResetBtn = document.getElementById('records-reset');
+const recordsConfirm = document.getElementById('records-confirm');
+const recordsConfirmYes = document.getElementById('records-confirm-yes');
+const recordsConfirmNo = document.getElementById('records-confirm-no');
+
+let recordsData = recordsLoad();
+let recordsCombo = 0;
+let recordsRunBestCombo = 0;
+let recordsPending = null;   // { score, lines } esperando nombre
+let recordsHighlight = -1;   // índice de la fila resaltada
+
+function recordsEmpty() { return { scores: [], bestCombo: 0, maxLines: 0 }; }
+
+function recordsLoad() {
+  const data = recordsEmpty();
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (raw && typeof raw === 'object') {
+      if (Array.isArray(raw.scores)) {
+        data.scores = raw.scores
+          .filter(e => e && Number.isFinite(e.score))
+          .map(e => ({
+            name: String(e.name || '').slice(0, 12),
+            score: e.score,
+            lines: Number.isFinite(e.lines) ? e.lines : 0,
+            date: String(e.date || ''),
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, RECORDS_MAX);
+      }
+      if (Number.isFinite(raw.bestCombo)) data.bestCombo = raw.bestCombo;
+      if (Number.isFinite(raw.maxLines)) data.maxLines = raw.maxLines;
+    }
+  } catch (e) {}
+  return data;
+}
+
+function recordsPersist() {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(recordsData)); } catch (e) {}
+}
+
+function recordsResetRun() {
+  recordsCombo = 0;
+  recordsRunBestCombo = 0;
+  recordsPanel.classList.add('hidden');
+}
+
+function recordsTrackCombo(cleared) {
+  if (cleared) {
+    recordsCombo++;
+    if (recordsCombo > recordsRunBestCombo) recordsRunBestCombo = recordsCombo;
+  } else {
+    recordsCombo = 0;
+  }
+}
+
+function recordsQualifies(sc) {
+  if (sc <= 0) return false;
+  return recordsData.scores.length < RECORDS_MAX ||
+    sc > recordsData.scores[recordsData.scores.length - 1].score;
+}
+
+function recordsRender() {
+  recordsBody.textContent = '';
+  for (let i = 0; i < RECORDS_MAX; i++) {
+    const e = recordsData.scores[i];
+    const tr = document.createElement('tr');
+    if (i === recordsHighlight) tr.className = 'records-current';
+    const cells = e
+      ? [i + 1, e.name || '---', e.score.toLocaleString(), e.lines]
+      : [i + 1, '---', '', ''];
+    cells.forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = String(v);
+      tr.appendChild(td);
+    });
+    recordsBody.appendChild(tr);
+  }
+  recordsBestCombo.textContent = recordsData.bestCombo;
+  recordsMaxLines.textContent = recordsData.maxLines;
+}
+
+function recordsCancelConfirm() {
+  recordsConfirm.classList.add('hidden');
+  recordsResetBtn.classList.remove('hidden');
+}
+
+function recordsShow(entering) {
+  recordsCancelConfirm();
+  recordsForm.classList.toggle('hidden', !entering);
+  recordsRender();
+  recordsPanel.classList.remove('hidden');
+  if (entering) {
+    recordsName.value = '';
+    setTimeout(() => recordsName.focus(), 400); // deja pasar pulsaciones residuales
+  }
+}
+
+function recordsOnGameOver() {
+  if (recordsRunBestCombo > recordsData.bestCombo) recordsData.bestCombo = recordsRunBestCombo;
+  if (lines > recordsData.maxLines) recordsData.maxLines = lines;
+  recordsPersist();
+  recordsHighlight = -1;
+  recordsPending = recordsQualifies(score) ? { score, lines } : null;
+  recordsShow(!!recordsPending);
+}
+
+function recordsSubmit() {
+  if (!recordsPending) return;
+  const d = new Date();
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const entry = {
+    name: recordsName.value.trim().slice(0, 12) || 'Anónimo',
+    score: recordsPending.score,
+    lines: recordsPending.lines,
+    date,
+  };
+  let idx = recordsData.scores.findIndex(e => e.score < entry.score);
+  if (idx < 0) idx = recordsData.scores.length;
+  recordsData.scores.splice(idx, 0, entry);
+  recordsData.scores.length = Math.min(recordsData.scores.length, RECORDS_MAX);
+  recordsPending = null;
+  recordsHighlight = idx;
+  recordsPersist();
+  recordsForm.classList.add('hidden');
+  recordsRender();
+  restartBtn.focus();
+}
+
+recordsName.addEventListener('keydown', e => {
+  if (e.repeat && e.key === ' ') e.preventDefault();
+  e.stopPropagation(); // las teclas de juego no deben actuar mientras se escribe
+  if (e.key === 'Enter') { e.preventDefault(); recordsSubmit(); }
+});
+recordsForm.addEventListener('submit', e => { e.preventDefault(); recordsSubmit(); });
+recordsResetBtn.addEventListener('click', () => {
+  recordsResetBtn.classList.add('hidden');
+  recordsConfirm.classList.remove('hidden');
+  recordsConfirmNo.focus();
+});
+recordsConfirmNo.addEventListener('click', () => { recordsCancelConfirm(); recordsResetBtn.blur(); });
+recordsConfirmYes.addEventListener('click', () => {
+  recordsData = recordsEmpty();
+  recordsPending = null;
+  recordsHighlight = -1;
+  recordsPersist();
+  recordsForm.classList.add('hidden');
+  recordsCancelConfirm();
+  recordsRender();
+  recordsResetBtn.blur();
+});
+
+// Pantalla de inicio: la partida no empieza hasta pulsar «Jugar».
+function recordsShowStart() {
+  cancelAnimationFrame(animId);
+  gameOver = true; // bloquea el teclado global y togglePause
+  draw();
+  overlayTitle.textContent = 'TETRIS';
+  overlayScore.textContent = '';
+  restartBtn.textContent = 'Jugar';
+  overlay.classList.remove('hidden');
+  recordsPending = null;
+  recordsHighlight = -1;
+  recordsShow(false);
+  restartBtn.focus();
+}
+restartBtn.addEventListener('click', () => { restartBtn.textContent = 'Reiniciar'; });
+// ---- /records ----
+
 init();
+recordsShowStart(); // ---- records ----
