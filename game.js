@@ -11,7 +11,7 @@ const COLORS = [
   '#ba68c8', // T - purple
   '#81c784', // S - green
   '#e57373', // Z - red
-  '#7986cb', // J - indigo
+  '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
 ];
 
@@ -168,8 +168,20 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.globalAlpha = 1;
 }
 
+let gridColor = '#22222e';
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || gridColor;
+  const isLight = theme === 'light';
+  themeToggle.setAttribute('aria-checked', String(isLight));
+  themeToggle.setAttribute('aria-label', 'Modo claro');
+  try { localStorage.setItem('theme', theme); } catch (e) {}
+  if (board && current) { draw(); drawNext(); }
+}
+
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -304,5 +316,14 @@ restartBtn.addEventListener('click', () => {
   restartBtn.blur();
   init();
 });
+
+const themeToggle = document.getElementById('theme-toggle');
+themeToggle.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+  themeToggle.blur(); // evita que Espacio (caída) active el botón
+});
+let savedTheme = 'dark';
+try { savedTheme = localStorage.getItem('theme') === 'light' ? 'light' : 'dark'; } catch (e) {}
+applyTheme(savedTheme);
 
 init();
