@@ -298,3 +298,20 @@ kbd {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---- skins ---- */
+.skin-select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+.skin-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
