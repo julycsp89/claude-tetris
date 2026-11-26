@@ -158,15 +158,101 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+// ---- skins ----
+function skinRoundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+// colors[] alineado con PIECES (0 = null, 8 = Tuerca). bg/grid null = usar el tema.
+const SKINS = {
+  retro: {
+    colors: COLORS,
+    bg: null,
+    grid: null,
+    draw(c, px, py, s, color) {
+      c.fillStyle = color;
+      c.fillRect(px + 1, py + 1, s - 2, s - 2);
+      c.fillStyle = 'rgba(255,255,255,0.12)';
+      c.fillRect(px + 1, py + 1, s - 2, 4);
+    },
+  },
+  neon: {
+    colors: [null, '#00f0ff', '#fff700', '#d500f9', '#39ff14', '#ff1744', '#2979ff', '#ff9100', '#e0e0ff'],
+    bg: '#000000',
+    grid: '#14142a',
+    draw(c, px, py, s, color) {
+      c.shadowColor = color;
+      c.shadowBlur = 10;
+      c.fillStyle = 'rgba(0,0,0,0.85)';
+      c.fillRect(px + 3, py + 3, s - 6, s - 6);
+      c.strokeStyle = color;
+      c.lineWidth = 2;
+      c.strokeRect(px + 3, py + 3, s - 6, s - 6);
+      c.shadowBlur = 0;
+      c.fillStyle = color;
+      c.globalAlpha *= 0.35;
+      c.fillRect(px + 7, py + 7, s - 14, s - 14);
+    },
+  },
+  pastel: {
+    colors: [null, '#a8e6ef', '#fff1a8', '#d9b8f0', '#b9eac3', '#f8b9b9', '#b8d4f5', '#fcd3a1', '#d5dde0'],
+    bg: null,
+    grid: null,
+    draw(c, px, py, s, color) {
+      c.fillStyle = color;
+      skinRoundRect(c, px + 1.5, py + 1.5, s - 3, s - 3, 7);
+      c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.45)';
+      skinRoundRect(c, px + 5, py + 4, s - 10, 5, 2.5);
+      c.fill();
+    },
+  },
+  pixel: {
+    colors: [null, '#29b6d6', '#f2c200', '#9c4dcc', '#4caf50', '#d84343', '#4a7fd1', '#ef8a17', '#8d9ba3'],
+    bg: null,
+    grid: null,
+    draw(c, px, py, s, color) {
+      const n = 6, u = (s - 2) / n;
+      c.fillStyle = color;
+      c.fillRect(px + 1, py + 1, s - 2, s - 2);
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          if ((i + j) % 2 === 0) continue;
+          c.fillStyle = (i * 3 + j) % 4 === 1 ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.22)';
+          c.fillRect(px + 1 + i * u, py + 1 + j * u, u, u);
+        }
+      }
+      c.strokeStyle = 'rgba(0,0,0,0.6)';
+      c.lineWidth = 2;
+      c.strokeRect(px + 2, py + 2, s - 4, s - 4);
+    },
+  },
+};
+let currentSkin = 'retro';
+
+function skinBackground(context, w, h) {
+  const bg = SKINS[currentSkin].bg;
+  if (!bg) return;
+  context.fillStyle = bg;
+  context.fillRect(0, 0, w, h);
+}
+// ---- /skins ----
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const skin = SKINS[currentSkin];
+  context.save();
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  skin.draw(context, x * size, y * size, size, skin.colors[colorIndex]);
+  context.restore();
+  context.shadowBlur = 0;
+  context.shadowColor = 'rgba(0,0,0,0)';
   context.globalAlpha = 1;
 }
 
@@ -183,7 +269,7 @@ function applyTheme(theme) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = gridColor;
+  ctx.strokeStyle = SKINS[currentSkin].grid || gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -201,6 +287,7 @@ function drawGrid() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  skinBackground(ctx, canvas.width, canvas.height);
   drawGrid();
 
   // board
@@ -224,6 +311,7 @@ function draw() {
 function drawNext() {
   const NB = 30;
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  skinBackground(nextCtx, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
@@ -327,5 +415,30 @@ themeToggle.addEventListener('click', () => {
 let savedTheme = 'dark';
 try { savedTheme = localStorage.getItem('theme') === 'light' ? 'light' : 'dark'; } catch (e) {}
 applyTheme(savedTheme);
+
+// ---- skins ----
+const skinSelect = document.getElementById('skin-select');
+function applySkin(name) {
+  if (!SKINS[name]) name = 'retro';
+  currentSkin = name;
+  skinSelect.value = name;
+  try { localStorage.setItem('skin', name); } catch (e) {}
+  if (board && current) { draw(); drawNext(); }
+}
+skinSelect.addEventListener('change', () => {
+  applySkin(skinSelect.value);
+  skinSelect.blur(); // evita que Espacio (caída) active el control
+});
+// Si el select conserva el foco (abrir y cerrar sin cambiar), las teclas de juego no deben cambiar la skin.
+document.addEventListener('keydown', e => {
+  if (e.target === skinSelect && /^(Arrow|Space)/.test(e.code)) {
+    e.preventDefault();
+    skinSelect.blur();
+  }
+}, true);
+let savedSkin = 'retro';
+try { savedSkin = localStorage.getItem('skin') || 'retro'; } catch (e) {}
+applySkin(savedSkin);
+// ---- /skins ----
 
 init();
