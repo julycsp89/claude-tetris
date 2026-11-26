@@ -42,6 +42,12 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
+// ---- menú de pausa ----
+let startLevel = 1;     // elegido en el menú; se aplica en la próxima init()
+let gameStartLevel = 1; // nivel inicial de la partida en curso
+let pauseSwallowCode = null; // tecla que cerró el menú: se ignora hasta soltarla
+// ---- fin menú de pausa ----
+
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
@@ -108,7 +114,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = Math.max(gameStartLevel, Math.floor(lines / 10) + 1);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -323,6 +329,7 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+  overlay.classList.remove('is-pause');
   overlayTitle.textContent = 'GAME OVER';  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
 }
@@ -332,13 +339,16 @@ function togglePause() {
   paused = !paused;
   if (!paused) {
     overlay.classList.add('hidden');
+    pauseMenuOnResume();
     lastTime = performance.now();
     animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
+    overlay.classList.add('is-pause');
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
     overlay.classList.remove('hidden');
+    pauseMenuOnOpen();
   }
 }
 
@@ -363,10 +373,12 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  gameStartLevel = startLevel;
+  level = gameStartLevel;
+  overlay.classList.remove('is-pause');
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -378,7 +390,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (pauseMenuKey(e)) return;
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -406,6 +418,72 @@ restartBtn.addEventListener('click', () => {
   restartBtn.blur();
   init();
 });
+
+// ---- menú de pausa ----
+const pauseResumeBtn = document.getElementById('pause-resume');
+const pauseRestartBtn = document.getElementById('pause-restart');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls-list');
+const pauseLevelValue = document.getElementById('pause-level-value');
+const pauseLevelDown = document.getElementById('pause-level-down');
+const pauseLevelUp = document.getElementById('pause-level-up');
+const PAUSE_BLOCKED = ['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+
+function pauseMenuOnOpen() {
+  pauseControlsList.hidden = true;
+  pauseControlsBtn.setAttribute('aria-expanded', 'false');
+  pauseLevelValue.textContent = startLevel;
+  pauseResumeBtn.focus();
+}
+
+function pauseMenuOnResume() {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+
+// Devuelve true si la tecla ya fue gestionada (el handler global debe salir).
+function pauseMenuKey(e) {
+  if (e.code === pauseSwallowCode) return true;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (e.repeat) return true;
+    const wasPaused = paused;
+    togglePause();
+    if (wasPaused && !paused) pauseSwallowCode = e.code;
+    return true;
+  }
+  if (paused && PAUSE_BLOCKED.includes(e.code)) {
+    e.preventDefault();
+    return true;
+  }
+  return false;
+}
+
+document.addEventListener('keyup', e => {
+  if (e.code === pauseSwallowCode) pauseSwallowCode = null;
+});
+
+window.addEventListener('blur', () => { pauseSwallowCode = null; });
+
+function setStartLevel(n) {
+  startLevel = Math.min(10, Math.max(1, n));
+  pauseLevelValue.textContent = startLevel;
+}
+
+pauseResumeBtn.addEventListener('click', () => {
+  pauseResumeBtn.blur();
+  if (paused) togglePause();
+});
+pauseRestartBtn.addEventListener('click', () => {
+  pauseRestartBtn.blur();
+  init();
+});
+pauseControlsBtn.addEventListener('click', () => {
+  pauseControlsList.hidden = !pauseControlsList.hidden;
+  pauseControlsBtn.setAttribute('aria-expanded', String(!pauseControlsList.hidden));
+  pauseControlsBtn.blur();
+});
+pauseLevelDown.addEventListener('click', () => { setStartLevel(startLevel - 1); pauseLevelDown.blur(); });
+pauseLevelUp.addEventListener('click', () => { setStartLevel(startLevel + 1); pauseLevelUp.blur(); });
+// ---- fin menú de pausa ----
 
 const themeToggle = document.getElementById('theme-toggle');
 themeToggle.addEventListener('click', () => {
