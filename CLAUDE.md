@@ -34,7 +34,10 @@ Puntos clave de `game.js`:
 
 `#board` en `index.html` tiene `width="300" height="600"` fijos = `COLS × BLOCK` × `ROWS × BLOCK`. Si cambia `COLS`, `ROWS` o `BLOCK`, ajustar el canvas. `drawNext()` asume un canvas de 4×4 celdas de 30 px (`#next-canvas` 120×120).
 
-## Bugs conocidos (detectados al leer el código)
+## Notas del bucle
 
-- `endGame()` se llama desde dentro de `loop()` (vía `lockPiece` → `spawn`); su `cancelAnimationFrame` no afecta el frame en curso y `loop` vuelve a programarse al final, así que la caída automática sigue tras el GAME OVER.
-- `togglePause()` al reanudar no vuelve a ocultar el overlay (falta `overlay.classList.add('hidden')`), y llama `loop()` directamente además de reprogramarlo.
+`loop()` sale de inmediato si `paused || gameOver` y sólo se reprograma si el juego sigue activo (así `endGame()` desde dentro de `loop` detiene la caída). `togglePause()` reanuda con `requestAnimationFrame(loop)` y oculta el overlay.
+
+## Título
+
+`title.js` genera las letras 5×5 como cubos metálicos; `style.css` anima todo `.title` a la vez (`neon-sign`), no cada letra por separado.

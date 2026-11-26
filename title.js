@@ -1,4 +1,4 @@
-// Título "TETRIS" dibujado con bloques estilo pieza de Tetris (matriz 5x5 por letra)
+// Título "TETRIS" dibujado con bloques estilo cubo metálico de arcade (matriz 5x5 por letra)
 (function () {
   const GLYPHS = {
     T: ['11111', '00100', '00100', '00100', '00100'],
@@ -12,15 +12,12 @@
   const title = document.getElementById('title');
   if (!title) return;
 
+  // Todas las letras comparten la misma animación (en .title): se encienden y apagan juntas
   'TETRIS'.split('').forEach((ch, i) => {
-    const color = COLORS[i % COLORS.length];
     const letter = document.createElement('span');
     letter.className = 'title-letter';
     letter.setAttribute('aria-hidden', 'true');
-    letter.style.setProperty('--c', color);
-    // Cada letra parpadea con fase y duración distintas, como un letrero luminoso
-    letter.style.animationDelay = (-i * 0.7).toFixed(2) + 's';
-    letter.style.animationDuration = (2.6 + (i % 3) * 0.5).toFixed(2) + 's';
+    letter.style.setProperty('--c', COLORS[i % COLORS.length]);
 
     GLYPHS[ch].forEach((row) => {
       row.split('').forEach((cell) => {

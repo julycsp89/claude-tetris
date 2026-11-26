@@ -221,8 +221,7 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
-  overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayTitle.textContent = 'GAME OVER';  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
 }
 
@@ -230,8 +229,9 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
     lastTime = performance.now();
-    loop(lastTime);
+    animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
@@ -241,6 +241,7 @@ function togglePause() {
 }
 
 function loop(ts) {
+  if (paused || gameOver) return;
   const dt = ts - lastTime;
   lastTime = ts;
   dropAccum += dt;
@@ -253,7 +254,7 @@ function loop(ts) {
     }
   }
   draw();
-  animId = requestAnimationFrame(loop);
+  if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
 function init() {
@@ -299,6 +300,9 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => {
+  restartBtn.blur();
+  init();
+});
 
 init();
