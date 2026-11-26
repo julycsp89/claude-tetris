@@ -15,8 +15,53 @@ body {
   user-select: none;
 }
 
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
 .wrapper {
   position: relative;
+}
+
+/* ---- Título luminoso hecho de bloques ---- */
+.title {
+  display: flex;
+  gap: 14px;
+}
+
+.title-letter {
+  display: grid;
+  grid-template-columns: repeat(5, 8px);
+  grid-template-rows: repeat(5, 8px);
+  gap: 1px;
+  color: var(--c);
+  animation: neon-flicker 3s infinite ease-in-out;
+}
+
+.title-letter i {
+  display: block;
+}
+
+.title-letter i.on {
+  background: currentColor;
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+              inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+@keyframes neon-flicker {
+  0%, 100% { filter: brightness(1.25) drop-shadow(0 0 8px currentColor); opacity: 1; }
+  45%      { filter: brightness(0.7) drop-shadow(0 0 2px currentColor); opacity: 0.8; }
+  50%      { filter: brightness(1.5) drop-shadow(0 0 12px currentColor); opacity: 1; }
+  55%      { filter: brightness(0.6) drop-shadow(0 0 1px currentColor); opacity: 0.7; }
+  60%      { filter: brightness(1.4) drop-shadow(0 0 10px currentColor); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-letter { animation: none; filter: drop-shadow(0 0 6px currentColor); }
 }
 
 .game-container {
