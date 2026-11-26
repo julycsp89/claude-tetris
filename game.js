@@ -429,6 +429,13 @@ skinSelect.addEventListener('change', () => {
   applySkin(skinSelect.value);
   skinSelect.blur(); // evita que Espacio (caída) active el control
 });
+// Si el select conserva el foco (abrir y cerrar sin cambiar), las teclas de juego no deben cambiar la skin.
+document.addEventListener('keydown', e => {
+  if (e.target === skinSelect && /^(Arrow|Space)/.test(e.code)) {
+    e.preventDefault();
+    skinSelect.blur();
+  }
+}, true);
 let savedSkin = 'retro';
 try { savedSkin = localStorage.getItem('skin') || 'retro'; } catch (e) {}
 applySkin(savedSkin);
