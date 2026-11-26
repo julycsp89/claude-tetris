@@ -443,6 +443,18 @@ function pauseMenuOnResume() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 
+// Navegación con flechas entre las opciones del menú (circular).
+function pauseMenuNavigate(code) {
+  const items = [pauseResumeBtn, pauseRestartBtn, pauseControlsBtn, pauseLevelDown, pauseLevelUp];
+  const i = items.indexOf(document.activeElement);
+  let step = 0;
+  if (code === 'ArrowDown' || code === 'ArrowRight') step = 1;
+  else if (code === 'ArrowUp' || code === 'ArrowLeft') step = -1;
+  if (!step) return;
+  const target = i < 0 ? 0 : (i + step + items.length) % items.length;
+  items[target].focus();
+}
+
 // Devuelve true si la tecla ya fue gestionada (el handler global debe salir).
 function pauseMenuKey(e) {
   if (e.code === pauseSwallowCode) return true;
@@ -455,6 +467,7 @@ function pauseMenuKey(e) {
   }
   if (paused && PAUSE_BLOCKED.includes(e.code)) {
     e.preventDefault();
+    pauseMenuNavigate(e.code);
     return true;
   }
   return false;
@@ -482,10 +495,10 @@ pauseRestartBtn.addEventListener('click', () => {
 pauseControlsBtn.addEventListener('click', () => {
   pauseControlsList.hidden = !pauseControlsList.hidden;
   pauseControlsBtn.setAttribute('aria-expanded', String(!pauseControlsList.hidden));
-  pauseControlsBtn.blur();
+  // sin blur: el menú sigue abierto y conserva el foco para navegar con flechas
 });
-pauseLevelDown.addEventListener('click', () => { setStartLevel(startLevel - 1); pauseLevelDown.blur(); });
-pauseLevelUp.addEventListener('click', () => { setStartLevel(startLevel + 1); pauseLevelUp.blur(); });
+pauseLevelDown.addEventListener('click', () => setStartLevel(startLevel - 1));
+pauseLevelUp.addEventListener('click', () => setStartLevel(startLevel + 1));
 // ---- fin menú de pausa ----
 
 const themeToggle = document.getElementById('theme-toggle');
